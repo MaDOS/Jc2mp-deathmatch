@@ -3,10 +3,15 @@ function Arena:__init(manager)
 	self.deathMatchManager = manager
 	self.arenaRootpath = "/server/Arenas/"
 	self.manifestPath = self.arenaRootpath .. "Manifest.txt"
+	--TODO: Fix this ugly stuff
+	--Arena names
 	self.arenaNames = {}
 	self.numArenas = 0
-
+	
+	--ClassNames
 	self.arenas = {}
+	
+
 	
 	self.ammo_counts            = {
 	[2] = { 12, 60 }, [4] = { 7, 35 }, [5] = { 30, 90 },
@@ -73,7 +78,7 @@ function Arena:LoadArena(name)
 	if name == nil then
 		name = self:PickArena()
 	end
-	local path = self.arenaRootpath .. name .. ".Arena"
+	local path = self.arenaRootpath .. name .. ".arena"
 	--check if path is invalid
 	if path == nil then
 		print("*ERROR* - Arena path is nil!")
