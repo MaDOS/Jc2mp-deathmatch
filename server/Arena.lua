@@ -1,7 +1,8 @@
 class "Arena"
 function Arena:__init(manager)
 	self.deathMatchManager = manager
-	self.manifestPath = "server/Arenas/Manifest.txt"
+	self.arenaRootpath = "/server/Arenas/"
+	self.manifestPath = self.arenaRootpath .. "Manifest.txt"
 	self.arenaNames = {}
 	self.numArenas = 0
 
@@ -49,7 +50,7 @@ end
 ---------------------------------------------------------------------------------------------------------------------
 function Arena:DetermineClass()
 	for index, arena in pairs(self.arenaNames) do
-		local path = "server/Arenas/" .. arena .. ".arena"
+		local path = self.arenaRootpath .. arena .. ".arena"
 		--check if path is invalid
 		if path == nil then
 			print("*ERROR* - Arena path is nil!")
@@ -72,7 +73,7 @@ function Arena:LoadArena(name)
 	if name == nil then
 		name = self:PickArena()
 	end
-	local path = "server/Arenas/" .. name .. ".Arena"
+	local path = self.arenaRootpath .. name .. ".Arena"
 	--check if path is invalid
 	if path == nil then
 		print("*ERROR* - Arena path is nil!")
