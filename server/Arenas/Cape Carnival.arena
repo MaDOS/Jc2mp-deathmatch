@@ -3,6 +3,6 @@ Players(2,20)
 Boundary(13781.247070, 240.210983, -2319.114990, 400)
 MaximumY(2000)
 MinimumY(0)
-GraplingHookAllowed(true)
+GrapplingHookAllowed(true)
 ParachuteAllowed(true)
 //TODO: Create shitloads of spawnpoints

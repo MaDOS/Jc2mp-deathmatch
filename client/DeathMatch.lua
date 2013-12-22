@@ -85,6 +85,7 @@ end
 
 function DeathMatch:LocalPlayerInput(args)
 	if(self.state == "Running" or self.state == "Countdown") then
+		print("Grapplingallowed: ".. tostring(self.grapplingAllowed))
 		if(args.input == Action.FireGrapple and self.grapplingAllowed == false) then
 			return false
 		end
@@ -96,7 +97,6 @@ function DeathMatch:LocalPlayerInput(args)
 				end
 			end
 		end
-		print(tostring(args.input))
 	end
 	
     if (self.state == "Running") then

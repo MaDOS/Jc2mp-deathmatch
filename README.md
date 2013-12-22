@@ -33,7 +33,7 @@ ARENA SETTINGS
 - Boundary(x, y, z, radius): Center point of arena. Radius defines radius, if player leaves this he will be killed within 20 seconds. 
 - MaximumY(ymax): maximum y
 - MinimumY(ymin): minimum y
-- GraplingHookAllowed(bool): whether the grapplinghook is allowed to be used
+- GrapplingHookAllowed(bool): whether the grapplinghook is allowed to be used
 - ParachuteAllowed(bool): whether the parachute is allowed to be used
 - Spawn(x, y, z, dir, 0, 0): A spawn location. Multiple fore more locations, must match maxplayers.
 - Weapon(Handgun): Weapons pool, 1 weapon will be randomly drawn from all weapons. New line for each weapon. 
