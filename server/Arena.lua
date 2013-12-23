@@ -14,10 +14,10 @@ function Arena:__init(manager)
 
 	
 	self.ammo_counts            = {
-	[2] = { 12, 60 }, [4] = { 7, 35 }, [5] = { 30, 90 },
-	[6] = { 3, 18 }, [11] = { 20, 100 }, [13] = { 6, 36 },
-	[14] = { 4, 32 }, [16] = { 3, 12 }, [17] = { 5, 5 },
-	[28] = { 26, 130 } 
+	[2] = { 12, 999 }, [4] = { 7, 999 }, [5] = { 30, 999 },
+	[6] = { 3, 999 }, [11] = { 20, 999 }, [13] = { 6, 999 },
+	[14] = { 4, 999 }, [16] = { 3, 999 }, [17] = { 5, 999 },
+	[28] = { 26, 999 } 
 	}
 	
 	self.settings = {}
@@ -92,6 +92,7 @@ function Arena:LoadArena(name)
 	end
 
 	local arena = {}
+	arena.name = name
 	arena.Location = nil
 	arena.minPlayers = nil
 	arena.maxPlayers = nil
@@ -204,7 +205,7 @@ function Arena:Weapon(line)
 		weapon.ammo2 = tokens[3]
 	else
 		weapon.ammo1 = self.ammo_counts[weapon.id][1]
-		weapon.ammo2 = self.ammo_counts[weapon.id][2] * 6
+		weapon.ammo2 = self.ammo_counts[weapon.id][2]
 	end
 	
 	return weapon

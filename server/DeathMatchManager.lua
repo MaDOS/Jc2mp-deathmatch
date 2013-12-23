@@ -1,67 +1,176 @@
 class "DeathMatchManager"
 function DeathMatchManager:__init()
-	self.count = 0
 	self.players = {}
 	self.playerIds = {}
-	self.events = {}
-	self.adminId = "STEAM_0:1:26896132"
+	self.admins = {}
+	self:LoadAdmins()
 	
-	self:CreateDeathMatchEvent(nil)
+	self.arenamanager = Arena(self)
+	self.deathmatches = {}
+	
+	self.clientsListening = {}
+	--create arena for each dm
+	for index, arenaName in pairs(self.arenamanager.arenas) do
+		self.deathmatches[arenaName] = DeathMatch(self, World.Create(), arenaName)
+	end
+	
+	self.timerInfo = Timer()
+	self.timerInstance = Timer()
+   
+	Events:Subscribe("PlayerJoin", self, self.PlayerJoin)
 	Events:Subscribe("PlayerChat", self, self.ChatMessage)
+	Events:Subscribe("PostTick", self, self.PostTick)
+	Network:Subscribe("DeathMatchOpenArenaWindow", self, self.OpenArenaWindow)
+	Network:Subscribe("DeathMatchJoinArena", self, self.JoinArena)
+	Network:Subscribe("DeathMatchStart", self, self.Start)
+	
+	--If module is reloaded make sure admins are set to admin again
+	self.adminCheckTimer = Timer()
 end
 
-function DeathMatchManager:CreateDeathMatchEvent(arenaName)
-	self.currentDeathMatch = self:DeathMatchEvent(self:GenerateName(), arenaName)
-end
-
-function DeathMatchManager:DeathMatchEvent(name, arenaName)
-	local deathMatch = DeathMatch(name, self, World.Create(), arenaName)
-	table.insert(self.events, deathMatch)
-
-	self.count = self.count + 1
-	return deathMatch
-end
-function DeathMatchManager:RemoveDeathMatch(deathMatch)
-	for index, event in ipairs(self.events) do
-		if event.name == deathMatch.name then
-				table.remove(self.events, index)
-				break
+function DeathMatchManager:LoadAdmins()
+	local path = "/admins.txt"
+	local tempFile , tempFileError = io.open(path , "r")
+	if tempFileError then
+			print()
+			print("*ERROR*")
+			print(tempFileError)
+			print()
+			fatalError = true
+			return
+	else
+			io.close(tempFile)
+	end
+	
+	for line in io.lines(path) do
+		
+		if line:sub(1,1) == "A" then
+			line = line:gsub("Admin%(", "")
+			line = line:gsub("%)", "")
+			line = line:gsub(" ", "")
+			local tokens = line:split(",") 
+			
+			self.admins[tokens[2]] = tokens[1]
 		end
-	end	
+	end
 end
-function DeathMatchManager:GenerateName()
-	return "DeathMatch-"..tostring(self.count)
+
+function DeathMatchManager:Start(args, player)
+	if (self:IsAdmin(player)) then
+		self.deathmatches[args.arenaName].debugMode = args.debugMode
+		self.deathmatches[args.arenaName]:Start()
+	end
+end
+
+function DeathMatchManager:IsAdmin(player)
+	return self.admins[tostring(player:GetSteamId())] ~= nil
+end
+
+function DeathMatchManager:PlayerJoin(args)
+	local player = args.player
+	
+	if (self:IsAdmin(player)) then
+		Network:Send(player, "SetIsAdmin", true)
+	end
+end
+
+function DeathMatchManager:JoinArena(args, player)
+	--Remove from other dm if needed
+	local joinAgain = true
+	for arenaName, deathmatch in pairs(self.deathmatches) do
+		if(deathmatch:HasPlayer(player) == true) then
+			deathmatch:RemovePlayer(player)
+			if(args.arenaName == arenaName) then
+				joinAgain = false
+			end
+		end
+	end
+	
+	local arenaName = nil
+	if(joinAgain) then
+		self.deathmatches[args.arenaName]:JoinPlayer(player)
+		arenaName = args.arenaName
+	end
+	
+	--update arenaName on client
+	Network:Send(player, "ArenaName", arenaName)
+	local deathmatchInfo = self:GenereateDMInfo()
+	self:SendDeathmatchInfoToClient(player, deathmatchInfo)
+end
+
+--Clients opens window, from now on start sending update messages
+function DeathMatchManager:OpenArenaWindow(open, player)
+	if(open) then
+		self.clientsListening[player:GetId()] = player
+		local deathmatchInfo = self:GenereateDMInfo()
+		self:SendDeathmatchInfoToClient(player, deathmatchInfo)
+	else
+		self.clientsListening[player:GetId()] = nil
+	end
+end
+
+function DeathMatchManager:PostTick()
+	if(self.timerInfo:GetSeconds() >= 5) then
+		local deathmatchInfo = self:GenereateDMInfo()
+		
+		for index, player in pairs(self.clientsListening) do
+			self:SendDeathmatchInfoToClient(player, deathmatchInfo)
+		end
+		self.timerInfo:Restart()
+	end
+	
+	--Resend p admins stats if script is reloaded
+	if(self.adminCheckTimer ~= nil) then
+		if( self.adminCheckTimer:GetSeconds() >= 5) then
+			for p in Server:GetPlayers() do 
+				self:PlayerJoin({player = p}) 
+			end
+			self.adminCheckTimer = nil
+		end
+	end
+	
+	if(self.timerInstance:GetSeconds() > 2) then
+		for arenaName, deathmatch in pairs(self.deathmatches) do
+			for index, player in pairs(deathmatch.players) do
+				if(player:GetWorld() ~= DefaultWorld) then
+					deathmatch:RemovePlayer(player, "You are no longer in the default instance and are removed from the deathmatch queue.")
+				end
+			end
+		end
+		self.timerInstance:Restart()
+	end
+end
+
+function DeathMatchManager:SendDeathmatchInfoToClient(player, deathmatchInfo)
+	Network:Send(player, "DeathmatchInfo", deathmatchInfo)
+end
+
+function DeathMatchManager:GenereateDMInfo()
+	local deathmatchInfo = {}
+	for index, deathmatch in pairs(self.deathmatches) do
+		local info = {}
+		info.location = deathmatch.arena.Location
+		info.name = deathmatch.arena.name
+		info.state = deathmatch.state
+		info.curPlayers = deathmatch.numPlayers
+		info.minPlayers = deathmatch.arena.minPlayers
+		info.maxPlayers = deathmatch.arena.maxPlayers
+		info.grapplingAllowed = deathmatch.arena.grapplingAllowed
+		info.parachuteAllowed = deathmatch.arena.parachuteAllowed
+		table.insert(deathmatchInfo, info)
+	end
+	return deathmatchInfo
 end
 
 -------------
---CHAT SHIT--
+--CHAT STUF--
 -------------
 function DeathMatchManager:MessagePlayer(player, message)
-	player:SendChatMessage( "[DeathMatch-" .. tostring(self.count) .."] " .. message, Color(30, 200, 220) )
+	player:SendChatMessage( "[DeathMatch] " .. message, Color(30, 200, 220) )
 end
 
 function DeathMatchManager:MessageGlobal(message)
-	Chat:Broadcast( "[DeathMatch-" .. tostring(self.count) .."] " .. message, Color(0, 255, 255) )
-end
-
-function DeathMatchManager:HasPlayer(player)
-	return self.playerIds[player:GetId()]
-end
-function DeathMatchManager:RemovePlayer(player)
-	for index, event in ipairs(self.events) do
-		if (event.players[player:GetId()]) then
-			event:RemovePlayer(player, "You have been removed from the Deathmatch event.")
-		end
-	end
-end
-
-function DeathMatchManager:CreateEvenFromArgs(cmdargs)
-	--Ugly workaround for dm with space
-	local arenaName = cmdargs[2]
-	if(cmdargs[3] ~= nil) then
-		arenaName = arenaName .. " " .. cmdargs[3]
-	end
-	self:CreateDeathMatchEvent(arenaName)
+	Chat:Broadcast( "[DeathMatch] " .. message, Color(0, 255, 255) )
 end
 
 function DeathMatchManager:ChatMessage(args)
@@ -78,43 +187,7 @@ function DeathMatchManager:ChatMessage(args)
 		table.insert(cmdargs, word)
 	end
 	
-	if (cmdargs[1] == "/deathmatch") then 
-		if (self.currentDeathMatch:HasPlayer(player)) then
-			self.currentDeathMatch:RemovePlayer(player, "You have been removed from the Deathmatch event.")
-		else
-			--Admin command to start a match with prefered map
-			if (player:GetSteamId() == SteamId(self.adminId)) then
-				if(cmdargs[2] ~= nil) then
-					self:CreateEvenFromArgs(cmdargs)
-				end
-			end
-			if (self:HasPlayer(player)) then
-				self:RemovePlayer(player)
-			else
-				self.currentDeathMatch:JoinPlayer(player)
-			end
-		end
-	end
-	
-	if (player:GetSteamId() == SteamId(self.adminId)) then
-		--Debug command to start a match with 1p & dont check finish criteria for first 60 sec of match
-		if (cmdargs[1] == "/dmdebugstart") then
-			if(cmdargs[2] ~= nil) then
-				self:CreateEvenFromArgs(cmdargs)
-				self.currentDeathMatch:JoinPlayer(player)
-			end
-			self.currentDeathMatch.debug = true
-			self.currentDeathMatch:Start()
-		end
-		--Joins all players into current dm game
-		if (cmdargs[1] == "/dmjoinall") then
-			for player in Server:GetPlayers() do
-				if not self.currentDeathMatch:HasPlayer(player) then
-					self.currentDeathMatch:JoinPlayer(player)
-				end
-			end
-			self.currentDeathMatch:Start()
-		end
+	if (self:IsAdmin(player)) then
 		--admins can output points to file for easy creation of arenas spawns 
 		if (cmdargs[1] == "/p") then
 			local text = "Spawn(" .. tostring(player:GetPosition()) .. "," .. tostring(player:GetAngle()) .. ")\n"

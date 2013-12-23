@@ -5,46 +5,20 @@ function math.round(x)
 	return x-0.5
 end
 class "DeathMatch"
-function DeathMatch:__init(name, manager, world, arenaName)
-	self.name = name
+function DeathMatch:__init(manager, world, arenaName)
 	self.deathMatchManager = manager
 	self.world = world
 	
-	self.debug = false
-	self.playerPrepped = false
-	
-	self.state = "Lobby"
-	self.startTimer = Timer()
-
-	self.players = {}
-	self.eventPlayers = {}
-
 	self.arenamanager = Arena(self.deathMatchManager)
 	self.arena = self.arenamanager:LoadArena(arenaName)
+
+	self:InitVars()
 	
-	self.weapon = table.randomvalue(self.arena.Weapons)
-
-	self.grapplingAllowed = self.arena.grapplingAllowed
-	self.parachuteAllowed = self.arena.parachuteAllowed
-	self.minPlayers = self.arena.minPlayers
-	self.maxPlayers = self.arena.maxPlayers
-	self.startPlayers = 0
-	self.numPlayers = 0
-	self.highestMoney = 0
-	self.scaleFactor = 0
-
-	self.globalStartTimer = Timer()
-	self.setupTimer = nil
-	self.countdownTimer = nil
-	self.deathMatchTimer = nil
-
 	Events:Subscribe("PostTick", self, self.PostTick)
 	Events:Subscribe("JoinGamemode", self, self.JoinGamemode)
 	Events:Subscribe("PlayerDeath", self, self.PlayerDeath)
 	Events:Subscribe("PlayerQuit", self, self.PlayerLeave)
 	Events:Subscribe("ModuleUnload", self, self.ModuleUnload)
-
-	self:MessageGlobal("A Deathmatch event is about to begin! (Location: " .. self.arena.Location .. ", Maximum Players: " .. self.maxPlayers ..") /deathmatch to join")
 end
 
 ---------------------------------------------------------------------------------------------------------------------
@@ -52,7 +26,7 @@ end
 ---------------------------------------------------------------------------------------------------------------------
 function DeathMatch:PostTick()
 	if (self.state == "Lobby") then
-		if ((self.numPlayers >= self.minPlayers and self.startTimer:GetSeconds() > 30) or (self.numPlayers >= self.minPlayers and self.globalStartTimer:GetSeconds() > 120)) then
+		if ((self.numPlayers >= self.minPlayers and self.startTimer:GetSeconds() > 30) or (self.numPlayers >= self.minPlayers and self.globalStartTimer:GetSeconds() > 300)) then
 			self:Start()
 		end
 	elseif (self.state == "Setup") then
@@ -83,7 +57,7 @@ function DeathMatch:PostTick()
 		self:CheckBoundaries()
 			
 		--Actively check for players & handle DeathMatch ending (if debug 60 secs later cause of test)
-		if (self.debug == false or self.deathMatchTimer:GetSeconds() > 60) then
+		if (self.debugMode == false or self.deathMatchTimer:GetSeconds() > 60) then
 			self:CheckPlayers()
 		end
 	end
@@ -92,7 +66,6 @@ end
 function DeathMatch:PlayerDeath(args)
 	if self:HasPlayer(args.player) then
 		if (self.state ~= "Lobby" and args.player:GetWorld() == self.world) then
-			self:Log(args.player:GetName() .. " died")
 			local numberEnding = ""
 			local lastDigit = self.numPlayers % 10
 			if ((self.numPlayers < 10) or (self.numPlayers > 20 and self.numPlayers < 110) or (self.numPlayers > 120)) then
@@ -108,16 +81,12 @@ function DeathMatch:PlayerDeath(args)
 			else
 				numberEnding = "th"
 			end
-			self:MessagePlayer(args.player, "Congratulations you came " ..tostring(self.numPlayers) .. numberEnding)
+			self.deathMatchManager:MessagePlayer(args.player, "Congratulations you came " ..tostring(self.numPlayers) .. numberEnding)
 			self:RemovePlayer(args.player)
 
-			self:Log(args.player:GetName() .. " came " ..tostring(self.numPlayers) .. numberEnding)
 			local currentMoney = args.player:GetMoney()
-			self:Log(args.player:GetName() .. " Current Money: " .. tostring(currentMoney))
 			local addMoney = math.ceil(100 * math.exp(self.scaleFactor * (self.startPlayers - self.numPlayers))) / 2
-			self:Log(args.player:GetName() .. " add Money: " .. tostring(addMoney))
 			args.player:SetMoney(currentMoney + addMoney)
-			self:Log(args.player:GetName() .. " New Money: " .. tostring(args.player:GetMoney()))
 		end
 	end
 end
@@ -158,7 +127,7 @@ function DeathMatch:ModuleUnload()
 	for k,p in pairs(self.eventPlayers) do
 		if (self.state ~= "Lobby") then
 			p:Leave()
-			self:MessagePlayer(p.player, "DeathMatch script unloaded. You have been restored to your starting position.")
+			self.deathMatchManager:MessagePlayer(p.player, "DeathMatch script unloaded. You have been restored to your starting position.")
 			self:SetClientState("Inactive")
 		end
 	end
@@ -209,18 +178,12 @@ function DeathMatch:CheckPlayers()
 	if (self.numPlayers == 1 and self.state ~= "Lobby") then
 	--kick everyone out and broadcast the winner
 		for k,p in pairs(self.players) do
-			self:MessageGlobal(p:GetName() .. " has won the Deathmatch!")
-			print("[" ..self.name .. "] " .. p:GetName() .. " won the Deathmatch event")
-
+			self.deathMatchManager:MessageGlobal(p:GetName() .. " has won the Deathmatch event " .. self.arena.Location .. "!")
 
 			local currentMoney = p:GetMoney()
-			self:Log(p:GetName() .. " Current Money: " .. tostring(currentMoney))
 			local addMoney = math.ceil(100 * math.exp(self.scaleFactor * (self.startPlayers - self.numPlayers))) / 2
-			self:Log(p:GetName() .. " add Money: " .. tostring(addMoney))
 			p:SetMoney(currentMoney + addMoney)
-			self:Log(p:GetName() .. " New Money: " .. tostring(p:GetMoney()))
 			self:RemovePlayer(p, "Congratulations you came 1st!")
-			self:Log(p:GetName() .. " Won")
 		end
 		self:Cleanup()
 	elseif (self.numPlayers == 0) then
@@ -252,23 +215,16 @@ function DeathMatch:Start()
 		end
 		idInc = idInc + divider
 	end
-	self:MessageGlobal("Starting DeathMatch event with " .. tostring(self.numPlayers) .. " players.")
-	self:Log("Starting DeathMatch event with " .. tostring(self.numPlayers) .. " players.")
-	print("[" ..self.name .. "] Started Event at (Location: " .. self.arena.Location .. ", Players: " .. self.startPlayers .. ")")
-	self.deathMatchManager:CreateDeathMatchEvent()
 
 	self.highestMoney = self.startPlayers * 400
-	self:Log("Highest Money: ".. tostring(self.highestMoney))
 	self.scaleFactor = math.log(self.highestMoney/100)/self.startPlayers
-	self:Log("scaleFactor : ".. tostring(self.scaleFactor))
-
 end
 
 function DeathMatch:SpawnPlayer(player, index)
 	if (IsValid(self.arena.SpawnPoint[index]) ~= nil) then
 		--TELEPORT THE PLAYER
 		player:SetWorld(self.world)
-		player:SetPosition(self.arena.SpawnPoint[index].position)
+		player:SetPosition(self.arena.SpawnPoint[index].position + Vector3(0,1,0))
 		player:SetAngle(self.arena.SpawnPoint[index].angle)
 		player:ClearInventory()
 
@@ -289,9 +245,8 @@ function DeathMatch:HasPlayer(player)
 end
 
 function DeathMatch:JoinPlayer(player)
-	self:Log(player:GetName() .. " Joined")
 	if (player:GetWorld() ~= DefaultWorld) then
-		self:MessagePlayer(player, "You must exit other gamemodes before you can join.")
+		self.deathMatchManager:MessagePlayer(player, "You must exit other gamemodes before you can join.")
 	else
 		if (self.state == "Lobby") then
 			local p = Player(player)
@@ -300,7 +255,7 @@ function DeathMatch:JoinPlayer(player)
 
 			self.deathMatchManager.playerIds[player:GetId()] = true
 			self.numPlayers = self.numPlayers + 1
-			self:MessagePlayer(player, "You have been entered into the next DeathMatch event! It will begin shortly.") 
+			--self:MessagePlayer(player, "You have been entered into the next DeathMatch event! It will begin shortly.") 
 
 			Network:Send(player, "SetState", "Lobby")
 			self:UpdatePlayerCount()
@@ -314,47 +269,55 @@ function DeathMatch:JoinPlayer(player)
 end
 
 function DeathMatch:RemovePlayer(player, message)
-	self:Log(player:GetName() .. " Left")
 	if message ~= nil then
-		self:MessagePlayer(player, message)    
+		self.deathMatchManager:MessagePlayer(player, message)    
 	end
+	
 	local p = self.eventPlayers[player:GetId()]
-	if p == nil then return end
-
-	self.players[player:GetId()] = nil
-	self.eventPlayers[player:GetId()] = nil
-	self.deathMatchManager.playerIds[player:GetId()] = nil
-	self.numPlayers = self.numPlayers - 1
-	if (self.state ~= "Lobby") then
-		p:Leave()
+	if p == nil then 
+		return nil
+	else
+		self.players[player:GetId()] = nil
+		self.eventPlayers[player:GetId()] = nil
+		self.deathMatchManager.playerIds[player:GetId()] = nil
+		self.numPlayers = self.numPlayers - 1
+		if (self.state ~= "Lobby") then
+			p:Leave()
+		end
+		Network:Send(player, "SetState", "Inactive")
+		self:UpdatePlayerCount()
 	end
-	Network:Send(player, "SetState", "Inactive")
-	self:UpdatePlayerCount()
 end
 ---------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------CLEANUP-----------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------
 function DeathMatch:Cleanup()
 	self.state = "Cleanup"
-	self.world:Remove()
-	self.deathMatchManager:RemoveDeathMatch(self)
 	for index, player in pairs(self.players) do
 		self:RemovePlayer(player)
 	end
-end
----------------------------------------------------------------------------------------------------------------------
-----------------------------------------------------CHAT-------------------------------------------------------------
----------------------------------------------------------------------------------------------------------------------
-function DeathMatch:MessagePlayer(player, message)
-	player:SendChatMessage("[" ..self.name .. "] " .. message, Color(30, 200, 220) )
+	self.state = "Lobby"
 end
 
-function DeathMatch:MessageGlobal(message)
-	Chat:Broadcast("[" ..self.name .. "] " .. message, Color(0, 255, 255) )
-end
+function DeathMatch:InitVars()
+	self.weapon = table.randomvalue(self.arena.Weapons)
+	self.debugMode = false
+	self.playerPrepped = false
+	self.state = "Lobby"
+	self.startTimer = Timer()
+	self.players = {}
+	self.eventPlayers = {}
+	self.grapplingAllowed = self.arena.grapplingAllowed
+	self.parachuteAllowed = self.arena.parachuteAllowed
+	self.minPlayers = self.arena.minPlayers
+	self.maxPlayers = self.arena.maxPlayers
+	self.startPlayers = 0
+	self.numPlayers = 0
+	self.highestMoney = 0
+	self.scaleFactor = 0
 
-function DeathMatch:Log(message)
-	--local file = io.open("server/Logs/" .. self.name .. ".txt", "a+")
- 	--file:write(os.date().. " " .. message .. "\n")
- 	--file:close()
+	self.globalStartTimer = Timer()
+	self.setupTimer = nil
+	self.countdownTimer = nil
+	self.deathMatchTimer = nil
 end
