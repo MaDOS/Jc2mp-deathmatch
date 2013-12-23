@@ -59,6 +59,8 @@ function DeathMatchManager:Start(args, player)
 	if (self:IsAdmin(player)) then
 		self.deathmatches[args.arenaName].debugMode = args.debugMode
 		self.deathmatches[args.arenaName]:Start()
+		local deathmatchInfo = self:GenereateDMInfo()
+		self:SendDeathmatchInfoToClient(player, deathmatchInfo)
 	end
 end
 
@@ -131,9 +133,11 @@ function DeathMatchManager:PostTick()
 	
 	if(self.timerInstance:GetSeconds() > 2) then
 		for arenaName, deathmatch in pairs(self.deathmatches) do
-			for index, player in pairs(deathmatch.players) do
-				if(player:GetWorld() ~= DefaultWorld) then
-					deathmatch:RemovePlayer(player, "You are no longer in the default instance and are removed from the deathmatch queue.")
+			if(deathmatch.state == "Lobby") then
+				for index, player in pairs(deathmatch.players) do
+					if(player:GetWorld() ~= DefaultWorld) then
+						deathmatch:RemovePlayer(player, "You are no longer in the default instance and are removed from the deathmatch queue.")
+					end
 				end
 			end
 		end
