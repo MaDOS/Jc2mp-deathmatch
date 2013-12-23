@@ -14,17 +14,14 @@ Edit /server/DeathMatchManager.lua with your own admin ID.
 Edit /server/arenas/Manifest.txt for desired arena's
 
 
-Commands
---------
-**Client commands**
-- /deathmatch: join / leave dm
+How it works
+------------
+**Client**
+- pres 'k' or type /dm or /deathmatch to open the GUI
 
-**Admin commands**
-- /deathmatch arenaname: create dm with specific arena instead of random
-- /dmdebugstart: create debug arena which will work with 1p and wont check finished checks for first 60 sec
-- /dmjoinall: join all players in current dm
-- /p: log current pos to /server/arenas/SpawnPointsOutput.txt (for spawn point creation in arena's)
-
+**Admin**
+- Start: starts the event (disregarding minplayers, and any timers)
+- Debugstart: starts the event (disregarding minplayers, and any timers) and doesn't check finish criteria for first 60 seconds
 
 ARENA SETTINGS
 --------------
@@ -40,14 +37,6 @@ ARENA SETTINGS
 	Examples of weapons:
 	Handgun,Revolver,SMG,SawnOffShotgun,Assault,Shotgun,Sniper,MachineGun
 	Or Weapon(id,ammo,spare ammo)
-
-	
-TODO
-----
-- List of admins
-- Health/weapon drops
-- Arena & weapon voting
-
 
 Credits
 -------
