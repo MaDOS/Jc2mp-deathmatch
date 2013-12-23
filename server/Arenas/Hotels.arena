@@ -1,6 +1,6 @@
 Location(Hotels)
 Players(2,22)
-Boundary(-12673.769531, 242.337418, 15106.295898, 100)
+Boundary(-12673.769531, 242.337418, 15106.295898, 150)
 MaximumY(1500)
 MinimumY(100)
 GrapplingHookAllowed(true)

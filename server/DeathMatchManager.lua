@@ -22,6 +22,7 @@ function DeathMatchManager:__init()
 	Events:Subscribe("PostTick", self, self.PostTick)
 	Network:Subscribe("DeathMatchOpenArenaWindow", self, self.OpenArenaWindow)
 	Network:Subscribe("DeathMatchJoinArena", self, self.JoinArena)
+	Network:Subscribe("DeathMatchJoinAll", self, self.JoinAll)
 	Network:Subscribe("DeathMatchStart", self, self.Start)
 	
 	--If module is reloaded make sure admins are set to admin again
@@ -55,6 +56,7 @@ function DeathMatchManager:LoadAdmins()
 	end
 end
 
+
 function DeathMatchManager:Start(args, player)
 	if (self:IsAdmin(player)) then
 		self.deathmatches[args.arenaName].debugMode = args.debugMode
@@ -66,6 +68,24 @@ end
 
 function DeathMatchManager:IsAdmin(player)
 	return self.admins[tostring(player:GetSteamId())] ~= nil
+end
+
+function DeathMatchManager:JoinAll(args, player)
+	if (self:IsAdmin(player)) then
+		local isInAny = false
+		for p in Server:GetPlayers() do 
+			for arenaName, deathmatch in pairs(self.deathmatches) do
+				if(deathmatch:HasPlayer(p) == true) then
+					isInAny = true
+				end
+			end
+			if(isInAny == false) then
+				self.deathmatches[args.arenaName]:JoinPlayer(p)
+			end
+		end
+	end
+	local deathmatchInfo = self:GenereateDMInfo()
+	self:SendDeathmatchInfoToClient(player, deathmatchInfo)
 end
 
 function DeathMatchManager:PlayerJoin(args)

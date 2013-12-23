@@ -17,6 +17,7 @@ function DeathMatch:__init()
 	self.arenaName = nil
 	self.rows = {}
 	self.rowJoinButtons = {}
+	self.rowJoinAllButtons = {}
 	self.rowStartButtons = {}
 	self.rowDebugStartButtons = {}
 	self:CreateGui()
@@ -47,6 +48,8 @@ function DeathMatch:SetIsAdmin(isAdmin)
 	self.isAdmin = isAdmin
 	if(isAdmin == true) then
 		--Start
+		self.listbox:AddColumn("")
+		--Joinall
 		self.listbox:AddColumn("")
 		--Debugstart
 		self.listbox:AddColumn("")
@@ -111,23 +114,32 @@ function DeathMatch:DeathmatchInfo(deathmatchInfo)
 		--Admin buttons
 		if(self.isAdmin == true) then
 	   
+	   		local joinAllButton = self.rowJoinAllButtons[dmInfo.name]
+			local joinAllButtonBase = nil
+			if(joinAllButton == nil) then
+				joinAllButtonBase, joinAllButton = self:CreateListButton("Join All", true)
+				joinAllButton:Subscribe("Press", function() self:JoinAll(dmInfo.name) end)
+				row:SetCellContents(4, joinAllButtonBase)
+				self.rowJoinAllButtons[dmInfo.name] = joinAllButton
+			end
+			joinAllButton:SetEnabled(dmInfo.state == "Lobby")
+	   
 			local startButton = self.rowStartButtons[dmInfo.name]
 			local startButtonButtonBase = nil
 			if(startButton == nil) then
 				startButtonButtonBase, startButton = self:CreateListButton("Start", true)
 				startButton:Subscribe("Press", function() self:Start(dmInfo.name) end)
-				row:SetCellContents(4, startButtonButtonBase)
+				row:SetCellContents(5, startButtonButtonBase)
 				self.rowStartButtons[dmInfo.name] = startButton
 			end
 			startButton:SetEnabled(dmInfo.state == "Lobby")
-		
 		
 			local debugstartButton = self.rowDebugStartButtons[dmInfo.name]
 			local debugstartButtonBase = nil
 			if(debugstartButton == nil) then
 				debugstartButtonBase, debugstartButton = self:CreateListButton("Debugstart", true)
 				debugstartButton:Subscribe("Press", function() self:Start(dmInfo.name, true) end)
-				row:SetCellContents(5, debugstartButtonBase)
+				row:SetCellContents(6, debugstartButtonBase)
 				self.rowDebugStartButtons[dmInfo.name] = debugstartButton
 			end
 			debugstartButton:SetEnabled(dmInfo.state == "Lobby")
@@ -146,6 +158,10 @@ end
 
 function DeathMatch:Join( arenaName )
     Network:Send( "DeathMatchJoinArena", { arenaName = arenaName } )
+end
+
+function DeathMatch:JoinAll( arenaName)
+	Network:Send( "DeathMatchJoinAll", { arenaName = arenaName } )
 end
 
 -----

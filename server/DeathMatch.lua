@@ -260,7 +260,10 @@ function DeathMatch:JoinPlayer(player)
 			Network:Send(player, "SetState", "Lobby")
 			self:UpdatePlayerCount()
 			self.startTimer:Restart()
-
+			
+			if(self.numPlayers == 1) then
+				 self.globalStartTimer:Restart()
+			end
 			if (self.numPlayers == self.maxPlayers) then
 				self:Start()
 			end
@@ -285,6 +288,7 @@ function DeathMatch:RemovePlayer(player, message)
 			p:Leave()
 		end
 		Network:Send(player, "SetState", "Inactive")
+		Network:Send(player, "ArenaName", nil)
 		self:UpdatePlayerCount()
 	end
 end
