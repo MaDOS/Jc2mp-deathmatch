@@ -384,7 +384,7 @@ function DeathMatch:Render()
 	if (self.state == "Inactive") then return end
 	
     local pos = Vector2(3, Render.Height - 32)
-    Render:DrawText(pos, "DeathMatch v0.1.1 By M1nd0", Color(255, 255, 255), TextSize.Default) 
+    Render:DrawText(pos, "DeathMatch v0.2.0 By M1nd0", Color(255, 255, 255), TextSize.Default) 
     
 	
     if (self.state == "Setup") then
