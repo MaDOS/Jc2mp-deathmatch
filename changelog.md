@@ -1,3 +1,13 @@
+## 0.2.1 (2013-12-23)
+Features:
+  
+  - joinall button for admins
+
+Bugfixes:
+
+  - fixed area size of hotels arena
+  - fixed error where leave button wouldn't switch back to join after match ended
+
 ## 0.2.0 (2013-12-23)
 
 Features:
